@@ -404,7 +404,7 @@ async function pushCodeToRepo(repoUrl, appCode) {
 // Deploy app to Render
 async function deployApp(repoUrl, appName) {
   try {
-    console.log(`🔑 RENDER_API_KEY configured: ${RENDER_API_KEY ? 'YES' : 'NO'}`);
+    console.log(`🔑 RENDER_API_KEY configured: ${RENDER_API_KEY ? 'YES' : 'NO'} - Version 2.0`);
     
     if (!RENDER_API_KEY) {
       console.log('❌ No RENDER_API_KEY - using mock deployment');
