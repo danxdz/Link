@@ -5,8 +5,6 @@ const cors = require('cors');
 const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-const simpleGit = require('simple-git');
-const fs = require('fs-extra');
 require('dotenv').config();
 
 const app = express();
@@ -359,38 +357,43 @@ async function createGitHubRepo(appName, userId) {
   }
 }
 
-// Push code to GitHub repository
+// Push code to GitHub repository using GitHub API
 async function pushCodeToRepo(repoUrl, appCode) {
   try {
-    const tempDir = path.join(__dirname, 'temp', Date.now().toString());
-    await fs.ensureDir(tempDir);
-
-    // Write all files
-    for (const [filePath, content] of Object.entries(appCode)) {
-      const fullPath = path.join(tempDir, filePath);
-      await fs.ensureDir(path.dirname(fullPath));
-      await fs.writeFile(fullPath, content);
+    if (!GITHUB_TOKEN || !GITHUB_USERNAME) {
+      throw new Error('GitHub credentials not configured');
     }
 
-    // Initialize git and push
-    const git = simpleGit(tempDir);
-    await git.init();
-    await git.add('.');
-    await git.commit('Initial commit - Created by AI');
+    const repoName = repoUrl.split('/').pop();
     
-    // Extract clone URL from repo URL
-    const cloneUrl = repoUrl.replace('github.com/', `github.com:${GITHUB_USERNAME}/`).replace('https://', `https://${GITHUB_TOKEN}@`);
-    
-    await git.addRemote('origin', cloneUrl);
-    await git.push('origin', 'main');
-
-    // Cleanup
-    await fs.remove(tempDir);
+    // Create files using GitHub API
+    for (const [filePath, content] of Object.entries(appCode)) {
+      try {
+        const response = await axios.put(
+          `https://api.github.com/repos/${GITHUB_USERNAME}/${repoName}/contents/${filePath}`,
+          {
+            message: `Add ${filePath}`,
+            content: Buffer.from(content).toString('base64'),
+            branch: 'main'
+          },
+          {
+            headers: {
+              'Authorization': `token ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          }
+        );
+        console.log(`✅ Created file: ${filePath}`);
+      } catch (fileError) {
+        console.error(`❌ Failed to create file ${filePath}:`, fileError.message);
+        // Continue with other files
+      }
+    }
 
     return { success: true };
 
   } catch (error) {
-    console.error('Git push error:', error.message);
+    console.error('GitHub API push error:', error.message);
     return { success: false, error: error.message };
   }
 }
