@@ -241,15 +241,91 @@ const sendToCursorAPI = async (message, conversationId = null) => {
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
 const RENDER_API_KEY = process.env.RENDER_API_KEY;
 
-// Generate app code using AI
+// Generate app code using AI (try multiple services)
 async function generateAppCode(appName) {
   try {
-    if (!OPENAI_API_KEY) {
-      return generateMockApp(appName);
+    // Try Hugging Face first (free)
+    if (HUGGINGFACE_API_KEY) {
+      try {
+        console.log('🤖 Trying Hugging Face AI...');
+        const hfResponse = await generateWithHuggingFace(appName);
+        if (hfResponse) return hfResponse;
+      } catch (error) {
+        console.log('❌ Hugging Face failed:', error.message);
+      }
     }
 
+    // Try OpenAI if available
+    if (OPENAI_API_KEY) {
+      try {
+        console.log('🤖 Trying OpenAI...');
+        const openaiResponse = await generateWithOpenAI(appName);
+        if (openaiResponse) return openaiResponse;
+      } catch (error) {
+        console.log('❌ OpenAI failed:', error.message);
+      }
+    }
+
+    // Fallback to mock app
+    console.log('📝 Using mock app template');
+    return generateMockApp(appName);
+
+  } catch (error) {
+    console.error('AI generation error:', error.message);
+    return generateMockApp(appName);
+  }
+}
+
+// Generate with Hugging Face (FREE!)
+async function generateWithHuggingFace(appName) {
+  try {
+    const prompt = `Create a React app for ${appName}. Return JSON with files: package.json, src/App.js, public/index.html. Make it functional with Tailwind CSS.`;
+
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium',
+      {
+        inputs: prompt,
+        parameters: {
+          max_length: 1000,
+          temperature: 0.7,
+          do_sample: true
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000 // 30 second timeout
+      }
+    );
+
+    const generatedText = response.data[0]?.generated_text || '';
+    
+    // Try to extract JSON from the response
+    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch {
+        // If JSON parsing fails, create a custom app based on the generated text
+        return generateCustomApp(appName, generatedText);
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Hugging Face error:', error.message);
+    return null;
+  }
+}
+
+// Generate with OpenAI
+async function generateWithOpenAI(appName) {
+  try {
     const prompt = `Create a complete React application for: ${appName}
 
 Requirements:
@@ -263,9 +339,9 @@ Requirements:
 Return the complete file structure as JSON with file paths as keys and content as values.`;
 
     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 4000,
+      max_tokens: 3000,
       temperature: 0.7
     }, {
       headers: {
@@ -279,13 +355,243 @@ Return the complete file structure as JSON with file paths as keys and content a
     try {
       return JSON.parse(content);
     } catch {
-      return generateMockApp(appName);
+      return generateCustomApp(appName, content);
     }
 
   } catch (error) {
     console.error('OpenAI API Error:', error.message);
-    return generateMockApp(appName);
+    return null;
   }
+}
+
+// Generate custom app based on AI text
+function generateCustomApp(appName, aiText) {
+  const appId = Math.random().toString(36).substr(2, 9);
+  
+  // Extract key features from AI text
+  const features = extractFeatures(aiText);
+  
+  return {
+    'package.json': JSON.stringify({
+      name: `${appName.toLowerCase().replace(/\s+/g, '-')}-${appId}`,
+      version: '1.0.0',
+      private: true,
+      dependencies: {
+        react: '^18.2.0',
+        'react-dom': '^18.2.0',
+        'react-scripts': '5.0.1',
+        'tailwindcss': '^3.3.0',
+        'autoprefixer': '^10.4.14',
+        'postcss': '^8.4.24'
+      },
+      scripts: {
+        start: 'react-scripts start',
+        build: 'react-scripts build',
+        test: 'react-scripts test',
+        eject: 'react-scripts eject'
+      }
+    }, null, 2),
+
+    'public/index.html': `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${appName}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`,
+
+    'src/index.js': `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);`,
+
+    'src/App.js': generateCustomReactComponent(appName, features),
+
+    'README.md': `# ${appName}
+
+${aiText.substring(0, 200)}...
+
+## Features
+${features.map(f => `- ${f}`).join('\n')}
+
+## Getting Started
+\`\`\`bash
+npm install
+npm start
+\`\`\`
+
+Created by AI Assistant via Telegram bot.
+`
+  };
+}
+
+// Extract features from AI text
+function extractFeatures(text) {
+  const features = [];
+  if (text.toLowerCase().includes('todo')) features.push('Todo management');
+  if (text.toLowerCase().includes('blog')) features.push('Blog functionality');
+  if (text.toLowerCase().includes('weather')) features.push('Weather data');
+  if (text.toLowerCase().includes('portfolio')) features.push('Portfolio showcase');
+  if (text.toLowerCase().includes('dashboard')) features.push('Dashboard interface');
+  if (text.toLowerCase().includes('chat')) features.push('Chat functionality');
+  if (features.length === 0) features.push('Interactive interface');
+  return features;
+}
+
+// Generate custom React component
+function generateCustomReactComponent(appName, features) {
+  const hasTodo = features.some(f => f.toLowerCase().includes('todo'));
+  const hasBlog = features.some(f => f.toLowerCase().includes('blog'));
+  const hasWeather = features.some(f => f.toLowerCase().includes('weather'));
+  
+  if (hasTodo) {
+    return `import React, { useState } from 'react';
+
+function App() {
+  const [todos, setTodos] = useState([]);
+  const [newTodo, setNewTodo] = useState('');
+
+  const addTodo = () => {
+    if (newTodo.trim()) {
+      setTodos([...todos, { id: Date.now(), text: newTodo, done: false }]);
+      setNewTodo('');
+    }
+  };
+
+  const toggleTodo = (id) => {
+    setTodos(todos.map(todo => 
+      todo.id === id ? { ...todo, done: !todo.done } : todo
+    ));
+  };
+
+  const deleteTodo = (id) => {
+    setTodos(todos.filter(todo => todo.id !== id));
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <header className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">${appName}</h1>
+            <p className="text-gray-600">Manage your tasks efficiently</p>
+          </header>
+
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex gap-2 mb-6">
+              <input
+                type="text"
+                value={newTodo}
+                onChange={(e) => setNewTodo(e.target.value)}
+                placeholder="Add a new todo..."
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+              />
+              <button
+                onClick={addTodo}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Add
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {todos.map(todo => (
+                <div key={todo.id} className={\`flex items-center gap-3 p-3 rounded-lg \${todo.done ? 'bg-gray-100' : 'bg-gray-50'}\`}>
+                  <input
+                    type="checkbox"
+                    checked={todo.done}
+                    onChange={() => toggleTodo(todo.id)}
+                    className="w-5 h-5 text-blue-600"
+                  />
+                  <span className={\`flex-1 \${todo.done ? 'line-through text-gray-500' : ''}\`}>
+                    {todo.text}
+                  </span>
+                  <button
+                    onClick={() => deleteTodo(todo.id)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {todos.length === 0 && (
+              <p className="text-center text-gray-500 py-8">No todos yet. Add one above!</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;`;
+  }
+
+  // Default counter app for other types
+  return `import React, { useState } from 'react';
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <header className="text-center mb-12">
+            <h1 className="text-5xl font-bold text-gray-800 mb-4">${appName}</h1>
+            <p className="text-xl text-gray-600">A beautiful ${appName.toLowerCase()} app created by AI</p>
+          </header>
+
+          <main className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="text-center">
+              <div className="mb-8">
+                <div className="text-6xl font-bold text-blue-600 mb-4">{count}</div>
+                <p className="text-gray-600 mb-6">Click the button to interact with your app!</p>
+              </div>
+              
+              <div className="space-x-4">
+                <button
+                  onClick={() => setCount(count + 1)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
+                >
+                  Increment
+                </button>
+                <button
+                  onClick={() => setCount(count - 1)}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
+                >
+                  Decrement
+                </button>
+                <button
+                  onClick={() => setCount(0)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </main>
+
+          <footer className="text-center mt-12 text-gray-500">
+            <p>Created with ❤️ by AI Assistant</p>
+          </footer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;`;
 }
 
 // Generate mock app when AI is not available
