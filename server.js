@@ -34,7 +34,35 @@ const CURSOR_API_URL = process.env.CURSOR_API_URL || 'https://api.cursor.sh';
 // Initialize Telegram Bot
 let telegramBot = null;
 if (TELEGRAM_TOKEN) {
-  telegramBot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+  try {
+    telegramBot = new TelegramBot(TELEGRAM_TOKEN, { 
+      polling: {
+        interval: 1000,
+        autoStart: true,
+        params: {
+          timeout: 10
+        }
+      }
+    });
+    
+    // Handle polling errors gracefully
+    telegramBot.on('polling_error', (error) => {
+      console.error('Telegram polling error:', error.message);
+      if (error.code === 409) {
+        console.log('Bot conflict detected. Stopping polling...');
+        telegramBot.stopPolling();
+        // Restart polling after a delay
+        setTimeout(() => {
+          console.log('Restarting Telegram bot polling...');
+          telegramBot.startPolling();
+        }, 5000);
+      }
+    });
+    
+    console.log('Telegram bot initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Telegram bot:', error.message);
+  }
 }
 
 // Store active connections and conversations
@@ -115,9 +143,6 @@ if (telegramBot) {
     });
   });
 
-  telegramBot.on('polling_error', (error) => {
-    console.error('Telegram polling error:', error);
-  });
 }
 
 // Socket.IO connection handling
@@ -225,6 +250,31 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, 'dist/index.html'));
   });
 }
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('Received SIGINT. Gracefully shutting down...');
+  if (telegramBot) {
+    telegramBot.stopPolling();
+    console.log('Telegram bot polling stopped');
+  }
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM. Gracefully shutting down...');
+  if (telegramBot) {
+    telegramBot.stopPolling();
+    console.log('Telegram bot polling stopped');
+  }
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
 
 // Start server
 server.listen(PORT, () => {
