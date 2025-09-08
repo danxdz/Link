@@ -22,7 +22,7 @@ app.use(express.json());
 
 // Serve static files from the React app build
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
+  app.use(express.static(path.join(__dirname, 'dist')));
 }
 
 // Configuration
@@ -222,7 +222,7 @@ app.post('/api/send-message', async (req, res) => {
 // Catch-all handler: send back React's index.html file for any non-API routes
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+    res.sendFile(path.join(__dirname, 'dist/index.html'));
   });
 }
 
