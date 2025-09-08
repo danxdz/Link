@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: telegram-cursor-relay
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: CURSOR_API_KEY
+        sync: false
+        optional: true
+      - key: CURSOR_API_URL
+        value: https://api.cursor.sh
+        optional: true
+    healthCheckPath: /api/health
+    autoDeploy: true

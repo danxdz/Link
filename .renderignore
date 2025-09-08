@@ -1,0 +1,32 @@
+# Python files (not needed for Node.js deployment)
+*.py
+__pycache__/
+venv/
+logs/
+.env
+.env.local
+
+# Development files
+node_modules/
+.git/
+.gitignore
+README.md
+DEPLOYMENT_*.md
+FINAL_CHECKLIST.md
+SUMMARY.md
+WEB_SUMMARY.md
+QUICKSTART.md
+
+# Test files
+test_*.py
+simple_test.py
+setup.py
+
+# Docker files (not needed for Render)
+Dockerfile
+docker-compose.yml
+
+# TypeScript config (not needed in production)
+tsconfig*.json
+vite.config.ts
+eslint.config.js

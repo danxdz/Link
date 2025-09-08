@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "start": "cd backend && npm start",
     "install:all": "npm install && cd backend && npm install",
-    "postinstall": "npm run build:frontend"
+    "postinstall": "npm run build:frontend",
+    "render-postbuild": "npm run build"
   },
   "dependencies": {
     "concurrently": "^8.2.2"
