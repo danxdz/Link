@@ -327,13 +327,14 @@ async function createGitHubRepo(appName, userId) {
       throw new Error('GitHub credentials not configured');
     }
 
-    const repoName = `${appName.toLowerCase().replace(/\s+/g, '-')}-${userId}`;
+    const repoName = `${appName.toLowerCase().replace(/\s+/g, '-')}-${userId}-${Date.now()}`;
     
     const response = await axios.post('https://api.github.com/user/repos', {
       name: repoName,
       description: `A ${appName} app created by AI via Telegram`,
       private: false,
-      auto_init: false
+      auto_init: true,
+      gitignore_template: 'Node'
     }, {
       headers: {
         'Authorization': `token ${GITHUB_TOKEN}`,
@@ -349,10 +350,10 @@ async function createGitHubRepo(appName, userId) {
     };
 
   } catch (error) {
-    console.error('GitHub API Error:', error.message);
+    console.error('GitHub API Error:', error.response?.data || error.message);
     return {
       success: false,
-      error: error.message
+      error: error.response?.data?.message || error.message
     };
   }
 }
