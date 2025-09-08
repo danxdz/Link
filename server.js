@@ -402,7 +402,10 @@ async function pushCodeToRepo(repoUrl, appCode) {
 // Deploy app to Render
 async function deployApp(repoUrl, appName) {
   try {
+    console.log(`🔑 RENDER_API_KEY configured: ${RENDER_API_KEY ? 'YES' : 'NO'}`);
+    
     if (!RENDER_API_KEY) {
+      console.log('❌ No RENDER_API_KEY - using mock deployment');
       return {
         success: true,
         url: `https://${appName.toLowerCase().replace(/\s+/g, '-')}-demo.onrender.com`,
@@ -451,13 +454,18 @@ async function deployApp(repoUrl, appName) {
     };
 
   } catch (error) {
-    console.error('Render deployment error:', error.response?.data || error.message);
+    console.error('❌ Render deployment error:', error.response?.data || error.message);
+    console.error('❌ Error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data
+    });
     
     return {
       success: true,
       url: `https://${appName.toLowerCase().replace(/\s+/g, '-')}-demo.onrender.com`,
       mock: true,
-      note: 'Mock deployment URL - Configure RENDER_API_KEY for real deployment'
+      note: `Mock deployment URL - Render API error: ${error.message}`
     };
   }
 }
