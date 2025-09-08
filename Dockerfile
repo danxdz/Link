@@ -1,35 +1,51 @@
-FROM python:3.11-slim
+# Multi-stage build for production
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Copy package files
+COPY package*.json ./
+COPY backend/package*.json ./backend/
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Install dependencies
+RUN npm run install:all
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
+# Copy source code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p logs data sessions
+# Build frontend
+RUN npm run build
 
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
+# Production stage
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# Copy backend dependencies
+COPY backend/package*.json ./
+RUN npm install --production
+
+# Copy built frontend
+COPY --from=builder /app/dist ./public
+
+# Copy backend source
+COPY backend/server.js ./
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+# Change ownership
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
 # Expose port
-EXPOSE 8000
+EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD node -e "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Run the application
-CMD ["python", "main.py"]
+# Start the application
+CMD ["node", "server.js"]

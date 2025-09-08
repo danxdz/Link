@@ -1,76 +1,91 @@
-# Quick Start Guide
+# Quick Start Guide - Web App
 
-Get your Telegram-Cursor API relay running in 5 minutes!
+Get your Telegram-Cursor web app running in 3 minutes!
 
 ## 🚀 Step 1: Get Telegram Bot Token
 
 1. Open Telegram and search for `@BotFather`
 2. Send `/newbot`
-3. Choose a name for your bot (e.g., "My Cursor Assistant")
-4. Choose a username (e.g., "my_cursor_assistant_bot")
+3. Choose a name (e.g., "My Web AI Assistant")
+4. Choose a username (e.g., "my_web_ai_bot")
 5. Copy the bot token (looks like `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
 
-## 🛠️ Step 2: Setup the Relay
+## 🛠️ Step 2: Setup
 
 ```bash
-# Run the setup script
-python setup.py
+# Install all dependencies
+npm run install:all
 
-# Copy environment template
-cp .env.example .env
+# Configure environment
+cp backend/.env.example backend/.env
 ```
 
 ## ⚙️ Step 3: Configure
 
-Edit `.env` file and add your bot token:
+Edit `backend/.env` and add your bot token:
 
 ```env
 TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
-DEBUG=True
-LOG_LEVEL=INFO
+PORT=3001
+NODE_ENV=development
 ```
 
 ## 🚀 Step 4: Run
 
 ```bash
-python main.py
+npm run dev
 ```
 
 You should see:
 ```
-✅ Telegram bot initialized successfully
-✅ Cursor client initialized successfully
-✅ Relay system initialized successfully
-🚀 Starting Telegram-Cursor relay...
-✅ Telegram bot started polling
-✅ Relay system started successfully
+🚀 Server running on port 3001
+📱 Telegram Bot: Active
+🤖 Cursor API: Mock mode
+🌐 WebSocket: http://localhost:3001
 ```
 
-## 💬 Step 5: Test
+## 💻 Step 5: Open Web App
 
-1. Open Telegram and find your bot
+1. Open http://localhost:5173 in your browser
+2. You should see the beautiful chat interface
+3. Start typing messages!
+
+## 📱 Step 6: Test Telegram
+
+1. Find your bot on Telegram
 2. Send `/start`
-3. Send any message like "Hello, how are you?"
-4. You should get a response from the AI!
+3. Send any message
+4. Watch it appear in the web app sidebar!
+
+## 🎉 You're Done!
+
+You now have:
+- ✅ Beautiful web chat interface
+- ✅ Real-time Telegram integration
+- ✅ AI responses (mock mode)
+- ✅ Live message sync
 
 ## 🔧 Optional: Real Cursor API
 
-To use the real Cursor API instead of mock responses:
+To use real Cursor API instead of mock:
 
 1. Get your Cursor API key
-2. Add it to `.env`:
+2. Add to `backend/.env`:
    ```env
    CURSOR_API_KEY=your_cursor_api_key_here
    ```
 
 ## 📊 Monitor
 
-Check status at: http://localhost:8000/status
+- **Web App**: http://localhost:5173
+- **Backend Status**: http://localhost:3001/api/status
+- **Health Check**: http://localhost:3001/api/health
 
 ## 🆘 Need Help?
 
-- Check logs in `logs/` directory
-- Review the full README.md
-- Enable debug mode: `DEBUG=True` in `.env`
+- Check browser console for errors
+- Check backend terminal for logs
+- Verify bot token is correct
+- Make sure both servers are running
 
-That's it! You now have a working Telegram-Cursor AI relay! 🎉
+That's it! Enjoy your new web-based AI chat system! 🎉
