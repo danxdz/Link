@@ -32,7 +32,10 @@ function App() {
 
   useEffect(() => {
     // Connect to WebSocket
-    socketRef.current = io('http://localhost:3001')
+    const socketUrl = process.env.NODE_ENV === 'production' 
+      ? window.location.origin 
+      : 'http://localhost:3001'
+    socketRef.current = io(socketUrl)
     
     socketRef.current.on('connect', () => {
       console.log('Connected to server')
