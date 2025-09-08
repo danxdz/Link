@@ -7,6 +7,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "vite",
     "dev:backend": "cd backend && npm run dev",
+    "prebuild": "npm install --legacy-peer-deps",
     "build": "npm run build:frontend",
     "build:frontend": "vite build",
     "build:backend": "cd backend && npm install --production",
