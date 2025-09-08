@@ -76,10 +76,10 @@ app.get('/app/:slug', (req, res) => {
                   }, [
                     React.createElement('h1', {
                       className: 'text-5xl font-bold text-gray-800 mb-4'
-                    }, '${app.name}'),
+                    }, app.name),
                     React.createElement('p', {
                       className: 'text-xl text-gray-600'
-                    }, 'A beautiful ${app.name.toLowerCase()} app created by AI')
+                    }, 'A beautiful ' + app.name.toLowerCase() + ' app created by AI')
                   ]),
                   React.createElement('main', {
                     className: 'bg-white rounded-2xl shadow-xl p-8'
@@ -119,7 +119,7 @@ app.get('/app/:slug', (req, res) => {
                     className: 'text-center mt-12 text-gray-500'
                   }, [
                     React.createElement('p', null, 'Created with ❤️ by AI Assistant'),
-                    React.createElement('p', null, `GitHub: ${app.repoUrl}`)
+                    React.createElement('p', null, 'GitHub: ' + app.repoUrl)
                   ])
                 ])
               ])
