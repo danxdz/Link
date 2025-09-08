@@ -11,13 +11,19 @@
     "build:frontend": "vite build",
     "build:backend": "cd backend && npm install --production",
     "preview": "vite preview",
-    "start": "cd backend && npm start",
+    "start": "node server.js",
     "install:all": "npm install && cd backend && npm install",
     "postinstall": "npm run build:frontend",
     "render-postbuild": "npm run build"
   },
   "dependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "cors": "^2.8.5",
+    "node-telegram-bot-api": "^0.66.0",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

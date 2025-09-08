@@ -3,7 +3,7 @@ services:
     name: telegram-cursor-relay
     env: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm run build:frontend
     startCommand: npm start
     envVars:
       - key: NODE_ENV
