@@ -277,9 +277,9 @@ process.on('SIGTERM', () => {
 });
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Telegram Bot: ${telegramBot ? 'Active' : 'Not configured'}`);
   console.log(`🤖 Cursor API: ${CURSOR_API_KEY ? 'Configured' : 'Mock mode'}`);
-  console.log(`🌐 WebSocket: http://localhost:${PORT}`);
+  console.log(`🌐 WebSocket: http://0.0.0.0:${PORT}`);
 });
