@@ -105,10 +105,15 @@ Then open **http://localhost:5173** and start chatting!
 ## 🚀 **Deployment Options**
 
 ### 🌐 **Render.com (Recommended)**
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/danxdz/Test)
+
+**One-Click Deploy**: Click the button above to deploy instantly to Render!
+
 - **Best for**: Web application deployment
 - **Features**: Auto-deploy, SSL, custom domains
 - **Cost**: Free tier available
-- **Setup**: Connect GitHub repo, set env vars, deploy!
+- **Setup**: Click button above, set env vars, deploy!
 
 ### 🐳 **Docker**
 ```bash
