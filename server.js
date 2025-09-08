@@ -29,7 +29,7 @@ if (process.env.NODE_ENV === 'production') {
 const PORT = process.env.PORT || 3001;
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CURSOR_API_KEY = process.env.CURSOR_API_KEY;
-const CURSOR_API_URL = process.env.CURSOR_API_URL || 'https://api.cursor.sh';
+const CURSOR_API_URL = process.env.CURSOR_API_URL || 'https://api.openai.com';
 
 // Initialize Telegram Bot
 let telegramBot = null;
@@ -82,7 +82,7 @@ const mockCursorResponse = (message) => {
   };
 };
 
-// Send message to Cursor API
+// Send message to AI API (OpenAI compatible)
 const sendToCursorAPI = async (message, conversationId = null) => {
   try {
     if (!CURSOR_API_KEY) {
@@ -91,10 +91,12 @@ const sendToCursorAPI = async (message, conversationId = null) => {
     }
 
     const response = await axios.post(`${CURSOR_API_URL}/v1/chat/completions`, {
-      message: message,
-      conversation_id: conversationId,
-      model: 'cursor-ai',
-      stream: false
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'user', content: message }
+      ],
+      max_tokens: 150,
+      temperature: 0.7
     }, {
       headers: {
         'Authorization': `Bearer ${CURSOR_API_KEY}`,
@@ -109,7 +111,7 @@ const sendToCursorAPI = async (message, conversationId = null) => {
       metadata: response.data
     };
   } catch (error) {
-    console.error('Cursor API Error:', error.message);
+    console.error('AI API Error:', error.message);
     return mockCursorResponse(message);
   }
 };
