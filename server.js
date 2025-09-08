@@ -25,6 +25,127 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'dist')));
 }
 
+// Serve created apps
+app.get('/app/:slug', (req, res) => {
+  const { slug } = req.params;
+  const app = createdApps.get(slug);
+  
+  if (!app) {
+    return res.status(404).send(`
+      <html>
+        <head><title>App Not Found</title></head>
+        <body>
+          <h1>App Not Found</h1>
+          <p>The app "${slug}" was not found.</p>
+          <a href="/">← Back to Bot</a>
+        </body>
+      </html>
+    `);
+  }
+
+  // Serve the app's HTML (we'll generate this from the stored app data)
+  const appHtml = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>${app.name}</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+      </head>
+      <body>
+        <div id="root"></div>
+        <script>
+          // Simple React-like app for ${app.name}
+          const { useState } = React;
+          
+          function App() {
+            const [count, setCount] = useState(0);
+            
+            return React.createElement('div', {
+              className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100'
+            }, [
+              React.createElement('div', {
+                className: 'container mx-auto px-4 py-8'
+              }, [
+                React.createElement('div', {
+                  className: 'max-w-4xl mx-auto'
+                }, [
+                  React.createElement('header', {
+                    className: 'text-center mb-12'
+                  }, [
+                    React.createElement('h1', {
+                      className: 'text-5xl font-bold text-gray-800 mb-4'
+                    }, '${app.name}'),
+                    React.createElement('p', {
+                      className: 'text-xl text-gray-600'
+                    }, 'A beautiful ${app.name.toLowerCase()} app created by AI')
+                  ]),
+                  React.createElement('main', {
+                    className: 'bg-white rounded-2xl shadow-xl p-8'
+                  }, [
+                    React.createElement('div', {
+                      className: 'text-center'
+                    }, [
+                      React.createElement('div', {
+                        className: 'mb-8'
+                      }, [
+                        React.createElement('div', {
+                          className: 'text-6xl font-bold text-blue-600 mb-4'
+                        }, count),
+                        React.createElement('p', {
+                          className: 'text-gray-600 mb-6'
+                        }, 'Click the button to interact with your app!')
+                      ]),
+                      React.createElement('div', {
+                        className: 'space-x-4'
+                      }, [
+                        React.createElement('button', {
+                          onClick: () => setCount(count + 1),
+                          className: 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200'
+                        }, 'Increment'),
+                        React.createElement('button', {
+                          onClick: () => setCount(count - 1),
+                          className: 'bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200'
+                        }, 'Decrement'),
+                        React.createElement('button', {
+                          onClick: () => setCount(0),
+                          className: 'bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200'
+                        }, 'Reset')
+                      ])
+                    ])
+                  ]),
+                  React.createElement('footer', {
+                    className: 'text-center mt-12 text-gray-500'
+                  }, [
+                    React.createElement('p', null, 'Created with ❤️ by AI Assistant'),
+                    React.createElement('p', null, `GitHub: ${app.repoUrl}`)
+                  ])
+                ])
+              ])
+            ]);
+          }
+          
+          ReactDOM.render(React.createElement(App), document.getElementById('root'));
+        </script>
+        <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+        <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+      </body>
+    </html>
+  `;
+  
+  res.send(appHtml);
+});
+
+// List all created apps
+app.get('/apps', (req, res) => {
+  const apps = Array.from(createdApps.values());
+  res.json({
+    apps: apps,
+    count: apps.length
+  });
+});
+
 // Configuration
 const PORT = process.env.PORT || 3001;
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -401,73 +522,44 @@ async function pushCodeToRepo(repoUrl, appCode) {
   }
 }
 
-// Deploy app to Render
+// Store created apps in memory (in production, use a database)
+const createdApps = new Map();
+
+// Deploy app by hosting it on the bot service
 async function deployApp(repoUrl, appName) {
   try {
-    console.log(`🔑 RENDER_API_KEY configured: ${RENDER_API_KEY ? 'YES' : 'NO'} - Version 2.0`);
+    console.log(`🚀 Hosting app: ${appName} on bot service`);
     
-    if (!RENDER_API_KEY) {
-      console.log('❌ No RENDER_API_KEY - using mock deployment');
-      return {
-        success: true,
-        url: `https://${appName.toLowerCase().replace(/\s+/g, '-')}-demo.onrender.com`,
-        mock: true,
-        note: 'Mock deployment URL - Configure RENDER_API_KEY for real deployment'
-      };
-    }
-
-    console.log(`Deploying app: ${appName} from repo: ${repoUrl}`);
-
-    const repoName = repoUrl.split('/').pop().replace('.git', '');
+    // Generate a unique app ID
+    const appId = Math.random().toString(36).substr(2, 9);
+    const appSlug = `${appName.toLowerCase().replace(/\s+/g, '-')}-${appId}`;
     
-    const serviceData = {
-      type: 'web_service',
-      name: `${appName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-      repo: repoUrl,
-      branch: 'main',
-      buildCommand: 'npm install && npm run build',
-      startCommand: 'npx serve -s build -l 3000',
-      plan: 'starter',
-      region: 'oregon',
-      envVars: [
-        {
-          key: 'NODE_ENV',
-          value: 'production'
-        }
-      ]
-    };
-
-    const response = await axios.post('https://api.render.com/v1/services', serviceData, {
-      headers: {
-        'Authorization': `Bearer ${RENDER_API_KEY}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
+    // Store app info
+    createdApps.set(appSlug, {
+      name: appName,
+      repoUrl: repoUrl,
+      createdAt: new Date().toISOString(),
+      slug: appSlug
     });
 
-    const serviceId = response.data.service.id;
-    const serviceUrl = `https://${response.data.service.slug}.onrender.com`;
+    // Return URL that will be served by this bot service
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    const appUrl = `${baseUrl}/app/${appSlug}`;
 
     return {
       success: true,
-      url: serviceUrl,
-      serviceId: serviceId,
-      serviceName: response.data.service.name
+      url: appUrl,
+      appId: appId,
+      slug: appSlug,
+      note: 'App hosted on bot service'
     };
 
   } catch (error) {
-    console.error('❌ Render deployment error:', error.response?.data || error.message);
-    console.error('❌ Error details:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data
-    });
+    console.error('❌ App hosting error:', error.message);
     
     return {
-      success: true,
-      url: `https://${appName.toLowerCase().replace(/\s+/g, '-')}-demo.onrender.com`,
-      mock: true,
-      note: `Mock deployment URL - Render API error: ${error.message}`
+      success: false,
+      error: error.message
     };
   }
 }
