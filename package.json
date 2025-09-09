@@ -2,7 +2,7 @@
   "name": "telegram-cursor-relay",
   "version": "1.0.0",
   "description": "Telegram-Cursor API Relay with Modern Web Interface",
-  "main": "backend/server.js",
+  "main": "server.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "vite",
