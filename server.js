@@ -93,6 +93,9 @@ app.get('/mini-app', (req, res) => {
         // Load apps and status
         loadStatus();
         loadApps();
+        
+        // Add sample apps for development
+        addSampleApps();
 
         async function createApp() {
           const appName = document.getElementById('appName').value.trim();
@@ -186,6 +189,43 @@ app.get('/mini-app', (req, res) => {
           } catch (error) {
             document.getElementById('appsList').innerHTML = '<p class="text-red-500 text-center py-4">Error loading apps</p>';
           }
+        }
+
+        // Add sample apps for development
+        function addSampleApps() {
+          const sampleApps = [
+            { name: 'Todo List', description: 'Task management app', type: 'todo' },
+            { name: 'Blog', description: 'Content management system', type: 'blog' },
+            { name: 'Portfolio', description: 'Personal showcase', type: 'portfolio' },
+            { name: 'Weather Dashboard', description: 'Weather data visualization', type: 'weather' },
+            { name: 'Chat App', description: 'Real-time messaging', type: 'chat' }
+          ];
+
+          const sampleAppsHtml = \`
+            <div class="mb-4">
+              <h3 class="text-sm font-medium text-gray-700 mb-2">Quick Create:</h3>
+              <div class="grid grid-cols-2 gap-2">
+                \${sampleApps.map(app => \`
+                  <button 
+                    onclick="createSampleApp('\${app.name}')"
+                    class="text-left p-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-xs border"
+                  >
+                    <div class="font-medium">\${app.name}</div>
+                    <div class="text-gray-500">\${app.description}</div>
+                  </button>
+                \`).join('')}
+              </div>
+            </div>
+          \`;
+
+          const appsList = document.getElementById('appsList');
+          appsList.innerHTML = sampleAppsHtml + appsList.innerHTML;
+        }
+
+        // Create sample app
+        async function createSampleApp(appName) {
+          document.getElementById('appName').value = appName;
+          await createApp();
         }
       </script>
     </body>
@@ -1465,6 +1505,20 @@ if (telegramBot) {
         `• Hugging Face: ${HUGGINGFACE_API_KEY ? '✅' : '❌'}\n` +
         `• OpenAI: ${OPENAI_API_KEY ? '✅' : '❌'}`
       );
+      return;
+    }
+
+    // Handle shutdown command (development only)
+    if (text === '/shutdown' && process.env.NODE_ENV !== 'production') {
+      await telegramBot.sendMessage(chatId, 
+        `🛑 **Shutting down bot for development...**\n\n` +
+        `Bot will stop in 3 seconds.`
+      );
+      
+      setTimeout(() => {
+        console.log('🛑 Bot shutdown requested by user');
+        process.exit(0);
+      }, 3000);
       return;
     }
 
