@@ -120,7 +120,16 @@ app.get('/mini-app', (req, res) => {
             if (result.success) {
               document.getElementById('appName').value = '';
               loadApps();
-              tg.showAlert(\`✅ App created!\\n\\n🔗 \${result.url}\`);
+              
+              // Send success message instead of alert (allows copying)
+              tg.sendData(JSON.stringify({
+                type: 'app_created',
+                url: result.url,
+                repoUrl: result.repoUrl,
+                appName: result.appName
+              }));
+              
+              tg.showAlert('✅ App created! Check the message below for links.');
             } else {
               tg.showAlert(\`❌ Error: \${result.error}\`);
             }
@@ -298,7 +307,10 @@ app.get('/app/:slug', (req, res) => {
 
 // List all created apps
 app.get('/apps', (req, res) => {
-  const apps = Array.from(createdApps.values());
+  const apps = Array.from(createdApps.values()).map(app => ({
+    ...app,
+    url: `${process.env.RENDER_EXTERNAL_URL || 'http://localhost:3001'}/app/${app.slug}`
+  }));
   res.json({
     apps: apps,
     count: apps.length
@@ -1306,6 +1318,26 @@ if (telegramBot) {
 
   telegramBot.on('polling_error', (error) => {
     console.error('Telegram polling error:', error.message);
+  });
+
+  // Handle data from mini app
+  telegramBot.on('message', async (msg) => {
+    if (msg.web_app_data) {
+      try {
+        const data = JSON.parse(msg.web_app_data.data);
+        if (data.type === 'app_created') {
+          await telegramBot.sendMessage(msg.chat.id,
+            `✅ **App Created Successfully!**\n\n` +
+            `📱 **App:** ${data.appName}\n` +
+            `🔗 **Live URL:** ${data.url}\n` +
+            `📁 **GitHub:** ${data.repoUrl}\n\n` +
+            `**You can copy these links!** 📋`
+          );
+        }
+      } catch (error) {
+        console.error('Error parsing web app data:', error);
+      }
+    }
   });
 
   // Handle callback queries (button presses)
