@@ -928,9 +928,25 @@ if (telegramBot) {
     // Handle app creation requests
     if (text.includes('make me the app') || text.includes('create app')) {
       try {
-        // Send "working" message
+        // Check if we have AI capabilities
+        const hasAI = HUGGINGFACE_API_KEY || OPENAI_API_KEY;
+        
+        if (!hasAI) {
+          await telegramBot.sendMessage(chatId, 
+            `❌ **No AI configured!**\n\n` +
+            `I need AI to create real apps. Please add:\n` +
+            `• \`HUGGINGFACE_API_KEY\` (FREE!)\n` +
+            `• \`OPENAI_API_KEY\` (optional)\n\n` +
+            `Without AI, I can only create basic templates.\n` +
+            `**Get free AI key**: https://huggingface.co/settings/tokens`
+          );
+          return;
+        }
+
+        // Send "working" message with AI status
+        const aiStatus = HUGGINGFACE_API_KEY ? '🤖 Hugging Face AI' : '🤖 OpenAI';
         const workingMsg = await telegramBot.sendMessage(chatId, 
-          `🔄 Creating your app... This might take a minute!`
+          `🔄 Creating your app with ${aiStatus}... This might take a minute!`
         );
 
         // Extract app name from message
@@ -952,8 +968,10 @@ if (telegramBot) {
           const deployment = await deployApp(result.repoUrl, appName);
           
           if (deployment.success) {
+            const aiUsed = HUGGINGFACE_API_KEY ? 'Hugging Face AI' : 'OpenAI';
             await telegramBot.editMessageText(
               `✅ Done! Your ${appName} app is ready!\n\n` +
+              `🤖 Generated with: ${aiUsed}\n` +
               `🔗 Live URL: ${deployment.url}\n` +
               `📁 GitHub: ${result.repoUrl}\n\n` +
               `You can test it now! 🎉`,
@@ -1003,13 +1021,22 @@ if (telegramBot) {
 
     // Handle status command
     if (text === '/status') {
+      const aiStatus = HUGGINGFACE_API_KEY ? '🤖 Hugging Face AI' : 
+                      OPENAI_API_KEY ? '🤖 OpenAI' : '❌ No AI configured';
+      const githubStatus = GITHUB_TOKEN ? '✅ GitHub' : '❌ No GitHub';
+      
       await telegramBot.sendMessage(chatId,
         `📊 **Bot Status:**\n\n` +
         `✅ Telegram Bot: Connected\n` +
+        `${aiStatus}\n` +
+        `${githubStatus}\n` +
         `✅ App Creator: Ready\n` +
         `✅ AI Chat: Ready\n` +
         `✅ Deployment: Ready\n` +
-        `⏰ Time: ${new Date().toLocaleString()}`
+        `⏰ Time: ${new Date().toLocaleString()}\n\n` +
+        `**AI Keys:**\n` +
+        `• Hugging Face: ${HUGGINGFACE_API_KEY ? '✅' : '❌'}\n` +
+        `• OpenAI: ${OPENAI_API_KEY ? '✅' : '❌'}`
       );
       return;
     }
