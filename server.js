@@ -25,6 +25,165 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'dist')));
 }
 
+// Telegram Mini App routes
+app.get('/mini-app', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>AI App Creator</title>
+      <script src="https://telegram.org/js/telegram-web-app.js"></script>
+      <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100 min-h-screen">
+      <div id="app" class="max-w-md mx-auto bg-white min-h-screen">
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-4 text-center">
+          <h1 class="text-xl font-bold">🤖 AI App Creator</h1>
+          <p class="text-sm opacity-90">Create apps with AI in seconds</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-4">
+          <!-- Create New App -->
+          <div class="mb-6">
+            <h2 class="text-lg font-semibold mb-3">Create New App</h2>
+            <div class="space-y-3">
+              <input 
+                type="text" 
+                id="appName" 
+                placeholder="What app do you want? (e.g., todo list, blog, portfolio)"
+                class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+              <button 
+                onclick="createApp()"
+                class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                🚀 Create App
+              </button>
+            </div>
+          </div>
+
+          <!-- My Apps -->
+          <div class="mb-6">
+            <h2 class="text-lg font-semibold mb-3">My Apps</h2>
+            <div id="appsList" class="space-y-2">
+              <p class="text-gray-500 text-center py-4">No apps created yet</p>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <h3 class="font-medium mb-2">Status</h3>
+            <div id="status" class="text-sm text-gray-600">
+              Loading...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        // Initialize Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Load apps and status
+        loadStatus();
+        loadApps();
+
+        async function createApp() {
+          const appName = document.getElementById('appName').value.trim();
+          if (!appName) {
+            alert('Please enter an app name');
+            return;
+          }
+
+          const button = event.target;
+          button.disabled = true;
+          button.textContent = '🔄 Creating...';
+
+          try {
+            const response = await fetch('/api/create-app', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                appName: appName,
+                userId: tg.initDataUnsafe.user?.id || 'web-user'
+              })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+              document.getElementById('appName').value = '';
+              loadApps();
+              tg.showAlert(\`✅ App created!\\n\\n🔗 \${result.url}\`);
+            } else {
+              tg.showAlert(\`❌ Error: \${result.error}\`);
+            }
+          } catch (error) {
+            tg.showAlert(\`❌ Error: \${error.message}\`);
+          }
+
+          button.disabled = false;
+          button.textContent = '🚀 Create App';
+        }
+
+        async function loadStatus() {
+          try {
+            const response = await fetch('/api/status');
+            const status = await response.json();
+            
+            document.getElementById('status').innerHTML = \`
+              <div class="space-y-1">
+                <div>🤖 AI: \${status.ai ? '✅' : '❌'}</div>
+                <div>📁 GitHub: \${status.github ? '✅' : '❌'}</div>
+                <div>🚀 Apps: \${status.appsCount}</div>
+              </div>
+            \`;
+          } catch (error) {
+            document.getElementById('status').innerHTML = '❌ Error loading status';
+          }
+        }
+
+        async function loadApps() {
+          try {
+            const response = await fetch('/api/apps');
+            const data = await response.json();
+            
+            const appsList = document.getElementById('appsList');
+            if (data.apps.length === 0) {
+              appsList.innerHTML = '<p class="text-gray-500 text-center py-4">No apps created yet</p>';
+              return;
+            }
+
+            appsList.innerHTML = data.apps.map(app => \`
+              <div class="border border-gray-200 rounded-lg p-3">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h3 class="font-medium">\${app.name}</h3>
+                    <p class="text-sm text-gray-500">Created: \${new Date(app.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div class="flex space-x-2">
+                    <a href="\${app.url}" target="_blank" class="text-blue-600 text-sm">🔗 Open</a>
+                    <a href="\${app.repoUrl}" target="_blank" class="text-gray-600 text-sm">📁 GitHub</a>
+                  </div>
+                </div>
+              </div>
+            \`).join('');
+          } catch (error) {
+            document.getElementById('appsList').innerHTML = '<p class="text-red-500 text-center py-4">Error loading apps</p>';
+          }
+        }
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // Serve created apps
 app.get('/app/:slug', (req, res) => {
   const { slug } = req.params;
@@ -144,6 +303,68 @@ app.get('/apps', (req, res) => {
     apps: apps,
     count: apps.length
   });
+});
+
+// API endpoints for Telegram Mini App
+app.get('/api/status', (req, res) => {
+  res.json({
+    ai: !!(HUGGINGFACE_API_KEY || OPENAI_API_KEY),
+    github: !!(GITHUB_TOKEN && GITHUB_USERNAME),
+    appsCount: createdApps.size
+  });
+});
+
+app.post('/api/create-app', async (req, res) => {
+  try {
+    const { appName, userId } = req.body;
+    
+    if (!appName) {
+      return res.json({ success: false, error: 'App name is required' });
+    }
+
+    // Check if we have AI capabilities
+    const hasAI = HUGGINGFACE_API_KEY || OPENAI_API_KEY;
+    if (!hasAI) {
+      return res.json({ 
+        success: false, 
+        error: 'No AI configured. Please add HUGGINGFACE_API_KEY or OPENAI_API_KEY' 
+      });
+    }
+
+    // Create the app
+    const result = await createApp(appName, userId);
+    
+    if (result.success) {
+      // Deploy the app
+      const deployment = await deployApp(result.repoUrl, appName);
+      
+      if (deployment.success) {
+        res.json({
+          success: true,
+          url: deployment.url,
+          repoUrl: result.repoUrl,
+          appName: appName
+        });
+      } else {
+        res.json({
+          success: false,
+          error: `Deployment failed: ${deployment.error}`
+        });
+      }
+    } else {
+      res.json({
+        success: false,
+        error: result.error
+      });
+    }
+
+  } catch (error) {
+    console.error('API create-app error:', error);
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // Configuration
@@ -920,7 +1141,23 @@ if (telegramBot) {
         `• Create apps: "make me the app todo list"\n` +
         `• Chat with AI: Just send any message\n` +
         `• Get help: /help\n\n` +
-        `**Try it:** "make me the app blog" 🚀`
+        `**Try it:** "make me the app blog" 🚀`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🚀 Open App Creator",
+                  web_app: { url: `${process.env.RENDER_EXTERNAL_URL || 'http://localhost:3001'}/mini-app` }
+                }
+              ],
+              [
+                { text: "📊 Status", callback_data: "status" },
+                { text: "❓ Help", callback_data: "help" }
+              ]
+            ]
+          }
+        }
       );
       return;
     }
@@ -1069,6 +1306,50 @@ if (telegramBot) {
 
   telegramBot.on('polling_error', (error) => {
     console.error('Telegram polling error:', error.message);
+  });
+
+  // Handle callback queries (button presses)
+  telegramBot.on('callback_query', async (callbackQuery) => {
+    const chatId = callbackQuery.message.chat.id;
+    const data = callbackQuery.data;
+
+    if (data === 'status') {
+      const aiStatus = HUGGINGFACE_API_KEY ? '🤖 Hugging Face AI' : 
+                      OPENAI_API_KEY ? '🤖 OpenAI' : '❌ No AI configured';
+      const githubStatus = GITHUB_TOKEN ? '✅ GitHub' : '❌ No GitHub';
+      
+      await telegramBot.answerCallbackQuery(callbackQuery.id);
+      await telegramBot.sendMessage(chatId,
+        `📊 **Bot Status:**\n\n` +
+        `✅ Telegram Bot: Connected\n` +
+        `${aiStatus}\n` +
+        `${githubStatus}\n` +
+        `✅ App Creator: Ready\n` +
+        `✅ AI Chat: Ready\n` +
+        `✅ Deployment: Ready\n` +
+        `⏰ Time: ${new Date().toLocaleString()}\n\n` +
+        `**AI Keys:**\n` +
+        `• Hugging Face: ${HUGGINGFACE_API_KEY ? '✅' : '❌'}\n` +
+        `• OpenAI: ${OPENAI_API_KEY ? '✅' : '❌'}`
+      );
+    } else if (data === 'help') {
+      await telegramBot.answerCallbackQuery(callbackQuery.id);
+      await telegramBot.sendMessage(chatId,
+        `🆘 **How to use me:**\n\n` +
+        `**Create Apps:**\n` +
+        `• "make me the app todo list"\n` +
+        `• "create app blog with dark mode"\n` +
+        `• "make me the app weather dashboard"\n\n` +
+        `**Chat with AI:**\n` +
+        `• Just send any message for AI responses\n\n` +
+        `**Commands:**\n` +
+        `/start - Welcome message\n` +
+        `/help - This help message\n` +
+        `/status - Check my status\n\n` +
+        `**Web App:**\n` +
+        `• Click "🚀 Open App Creator" for web interface`
+      );
+    }
   });
 }
 
