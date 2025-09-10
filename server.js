@@ -497,19 +497,7 @@ if (TELEGRAM_TOKEN) {
       }
     });
     
-    // Handle polling errors gracefully
-    telegramBot.on('polling_error', (error) => {
-      console.error('Telegram polling error:', error.message);
-      if (error.code === 409) {
-        console.log('Bot conflict detected. Stopping polling...');
-        telegramBot.stopPolling();
-        // Restart polling after a delay
-        setTimeout(() => {
-          console.log('Restarting Telegram bot polling...');
-          telegramBot.startPolling();
-        }, 5000);
-      }
-    });
+    // Handle polling errors gracefully (moved to main bot initialization)
     
     console.log('Telegram bot initialized successfully');
   } catch (error) {
@@ -1920,6 +1908,24 @@ if (telegramBot) {
 
   telegramBot.on('polling_error', (error) => {
     console.error('Telegram polling error:', error.message);
+    if (error.code === 409) {
+      console.log('Bot conflict detected. Stopping polling...');
+      telegramBot.stopPolling();
+      setTimeout(() => {
+        console.log('Restarting polling...');
+        telegramBot.startPolling();
+      }, 5000);
+    }
+  });
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Don't exit, just log the error
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   });
 
   // Handle data from mini app
@@ -1951,14 +1957,22 @@ if (telegramBot) {
         }
       } catch (error) {
         console.error('Error parsing web app data:', error);
+        try {
+          await telegramBot.sendMessage(msg.chat.id, 
+            '❌ Sorry, there was an error processing your app creation. Please try again.'
+          );
+        } catch (sendError) {
+          console.error('Error sending error message:', sendError);
+        }
       }
     }
   });
 
   // Handle callback queries (button presses)
   telegramBot.on('callback_query', async (callbackQuery) => {
-    const chatId = callbackQuery.message.chat.id;
-    const data = callbackQuery.data;
+    try {
+      const chatId = callbackQuery.message.chat.id;
+      const data = callbackQuery.data;
 
     if (data === 'status') {
       const aiStatus = HUGGINGFACE_API_KEY ? '🤖 Hugging Face AI' : 
@@ -1996,6 +2010,14 @@ if (telegramBot) {
         `**Web App:**\n` +
         `• Click "🚀 Open App Creator" for web interface`
       );
+    }
+    } catch (error) {
+      console.error('Error handling callback query:', error);
+      try {
+        await telegramBot.answerCallbackQuery(callbackQuery.id, '❌ Sorry, something went wrong!');
+      } catch (answerError) {
+        console.error('Error answering callback query:', answerError);
+      }
     }
   });
 }
