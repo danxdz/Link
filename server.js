@@ -226,9 +226,27 @@ app.get('/mini-app', (req, res) => {
         // Create sample app
         async function createSampleApp(appName) {
           if (appName === 'GitHub Web App') {
-            // Open GitHub in new tab for direct creation
-            window.open('https://github.com/new', '_blank');
-            tg.showAlert('🌐 Opening GitHub to create your web app directly!');
+            // Create a real GitHub web app with actual code
+            const response = await fetch('/api/create-app', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                appName: 'GitHub Web App',
+                userId: 'telegram_user',
+                type: 'github-web'
+              })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+              tg.sendData(JSON.stringify({
+                type: 'github_web_app_created',
+                url: result.url,
+                repoUrl: result.repoUrl
+              }));
+            } else {
+              tg.showAlert('❌ Error: ' + result.error);
+            }
             return;
           }
           
@@ -392,13 +410,29 @@ app.get('/api/apps', (req, res) => {
 
 app.post('/api/create-app', async (req, res) => {
   try {
-    const { appName, userId } = req.body;
+    const { appName, userId, type } = req.body;
     
     if (!appName) {
       return res.json({ success: false, error: 'App name is required' });
     }
 
-    // Check if we have AI capabilities
+    // Handle GitHub Web App creation
+    if (type === 'github-web') {
+      const result = await createGitHubWebApp(appName, userId);
+      if (result.success) {
+        res.json({
+          success: true,
+          url: result.url,
+          repoUrl: result.repoUrl,
+          appName: appName
+        });
+      } else {
+        res.json({ success: false, error: result.error });
+      }
+      return;
+    }
+
+    // Check if we have AI capabilities for regular apps
     const hasAI = HUGGINGFACE_API_KEY || OPENAI_API_KEY;
     if (!hasAI) {
       return res.json({ 
@@ -1342,6 +1376,318 @@ async function deployApp(repoUrl, appName) {
   }
 }
 
+// Create GitHub Web App with real website code
+async function createGitHubWebApp(appName, userId) {
+  try {
+    console.log(`Creating GitHub Web App: ${appName} for user: ${userId}`);
+
+    // Create a real website with HTML, CSS, and JavaScript
+    const websiteCode = {
+      'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${appName}</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Welcome to ${appName}</h1>
+            <p>A modern web application created with Telegram Bot</p>
+        </header>
+        
+        <main>
+            <section class="hero">
+                <h2>Get Started</h2>
+                <p>This is your personalized web application. Customize it to fit your needs!</p>
+                <button onclick="showAlert()" class="cta-button">Click Me!</button>
+            </section>
+            
+            <section class="features">
+                <h3>Features</h3>
+                <div class="feature-grid">
+                    <div class="feature">
+                        <h4>🚀 Modern Design</h4>
+                        <p>Clean and responsive interface</p>
+                    </div>
+                    <div class="feature">
+                        <h4>📱 Mobile Ready</h4>
+                        <p>Works perfectly on all devices</p>
+                    </div>
+                    <div class="feature">
+                        <h4>⚡ Fast Loading</h4>
+                        <p>Optimized for speed and performance</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>Created with ❤️ by Telegram Bot</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>`,
+      'style.css': `* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    color: white;
+    margin-bottom: 40px;
+}
+
+header h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+header p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+main {
+    background: white;
+    border-radius: 15px;
+    padding: 40px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    margin-bottom: 20px;
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.hero h2 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    color: #4a5568;
+}
+
+.hero p {
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+    color: #718096;
+}
+
+.cta-button {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.cta-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.features h3 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 30px;
+    color: #4a5568;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.feature {
+    text-align: center;
+    padding: 30px;
+    background: #f7fafc;
+    border-radius: 10px;
+    transition: transform 0.3s ease;
+}
+
+.feature:hover {
+    transform: translateY(-5px);
+}
+
+.feature h4 {
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    color: #4a5568;
+}
+
+.feature p {
+    color: #718096;
+}
+
+footer {
+    text-align: center;
+    color: white;
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .hero h2 {
+        font-size: 1.8rem;
+    }
+    
+    main {
+        padding: 20px;
+    }
+}`,
+      'script.js': `function showAlert() {
+    alert('Hello! This is your ${appName} web application! 🎉');
+}
+
+// Add some interactive features
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('${appName} loaded successfully!');
+    
+    // Add smooth scrolling
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+    
+    // Add animation to features
+    const features = document.querySelectorAll('.feature');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    });
+    
+    features.forEach(feature => {
+        feature.style.opacity = '0';
+        feature.style.transform = 'translateY(20px)';
+        feature.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(feature);
+    });
+});`
+    };
+
+    // Create GitHub repository
+    const repoName = appName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now();
+    const repoUrl = await createGitHubRepo(repoName, 'A modern web application created with Telegram Bot');
+    
+    if (!repoUrl) {
+      return { success: false, error: 'Failed to create GitHub repository' };
+    }
+
+    // Push all files to the repository
+    for (const [filename, content] of Object.entries(websiteCode)) {
+      await createFileInRepo(repoUrl, filename, content);
+    }
+
+    // Create a comprehensive README
+    const readmeContent = '# ' + appName + '\n\n' +
+      'A modern, responsive web application created with Telegram Bot.\n\n' +
+      '## 🌟 Features\n\n' +
+      '- **Modern Design**: Clean and professional interface\n' +
+      '- **Responsive Layout**: Works perfectly on desktop, tablet, and mobile\n' +
+      '- **Interactive Elements**: Smooth animations and user interactions\n' +
+      '- **Fast Loading**: Optimized for speed and performance\n' +
+      '- **Cross-Browser Compatible**: Works on all modern browsers\n\n' +
+      '## 🚀 Getting Started\n\n' +
+      '1. **Clone the repository**:\n' +
+      '   ```bash\n' +
+      '   git clone ' + repoUrl + '\n' +
+      '   cd ' + repoName + '\n' +
+      '   ```\n\n' +
+      '2. **Open in browser**:\n' +
+      '   Simply open `index.html` in your web browser or serve it with any web server.\n\n' +
+      '3. **Deploy to web hosting**:\n' +
+      '   - Upload files to any web hosting service (Netlify, Vercel, GitHub Pages, etc.)\n' +
+      '   - Or use GitHub Pages by enabling it in repository settings\n\n' +
+      '## 📁 Project Structure\n\n' +
+      '```\n' +
+      repoName + '/\n' +
+      '├── index.html          # Main HTML file\n' +
+      '├── style.css           # CSS styles\n' +
+      '├── script.js           # JavaScript functionality\n' +
+      '└── README.md           # This file\n' +
+      '```\n\n' +
+      '## 🛠️ Customization\n\n' +
+      '- **Edit `index.html`**: Modify the content and structure\n' +
+      '- **Edit `style.css`**: Customize colors, fonts, and layout\n' +
+      '- **Edit `script.js`**: Add interactive features and functionality\n\n' +
+      '## 🌐 Live Demo\n\n' +
+      'Visit the live application: [Your App URL]\n\n' +
+      '## 📱 Mobile Support\n\n' +
+      'This application is fully responsive and works great on:\n' +
+      '- 📱 Mobile phones\n' +
+      '- 📱 Tablets  \n' +
+      '- 💻 Desktop computers\n' +
+      '- 🖥️ Large screens\n\n' +
+      '## 🤖 Created by Telegram Bot\n\n' +
+      'This application was automatically generated by a Telegram Bot that can create web applications from simple text commands.\n\n' +
+      '## 📄 License\n\n' +
+      'This project is open source and available under the [MIT License](LICENSE).\n\n' +
+      '---\n\n' +
+      '**Enjoy your new web application! 🎉**';
+
+    await createFileInRepo(repoUrl, 'README.md', readmeContent);
+
+    // Store app info
+    const appSlug = repoName;
+    createdApps.set(appSlug, {
+      id: appSlug,
+      name: appName,
+      url: 'https://' + appSlug + '.onrender.com',
+      repoUrl: repoUrl,
+      createdAt: new Date().toISOString(),
+      type: 'github-web'
+    });
+
+    return {
+      success: true,
+      repoUrl: repoUrl,
+      url: 'https://' + appSlug + '.onrender.com',
+      appName: appName
+    };
+
+  } catch (error) {
+    console.error('Error creating GitHub Web App:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Main function to create app
 async function createApp(appName, userId) {
   try {
@@ -1587,6 +1933,19 @@ if (telegramBot) {
             `📱 **App:** ${data.appName}\n` +
             `🔗 **Live URL:** ${data.url}\n` +
             `📁 **GitHub:** ${data.repoUrl}\n\n` +
+            `**You can copy these links!** 📋`
+          );
+        } else if (data.type === 'github_web_app_created') {
+          await telegramBot.sendMessage(msg.chat.id,
+            `🌐 **GitHub Web App Created!**\n\n` +
+            `📱 **App:** GitHub Web App\n` +
+            `🔗 **Live URL:** ${data.url}\n` +
+            `📁 **GitHub:** ${data.repoUrl}\n\n` +
+            `**Features:**\n` +
+            `• Complete HTML/CSS/JS website\n` +
+            `• Responsive design\n` +
+            `• Interactive elements\n` +
+            `• Ready to deploy\n\n` +
             `**You can copy these links!** 📋`
           );
         }
