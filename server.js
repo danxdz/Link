@@ -1839,7 +1839,8 @@ if (telegramBot) {
         `**Commands:**\n` +
         `/start - Welcome message\n` +
         `/help - This help message\n` +
-        `/status - Check my status`
+        `/status - Check my status\n` +
+        `/cleanup - Delete test repositories`
       );
       return;
     }
@@ -1863,6 +1864,42 @@ if (telegramBot) {
         `• Hugging Face: ${HUGGINGFACE_API_KEY ? '✅' : '❌'}\n` +
         `• OpenAI: ${OPENAI_API_KEY ? '✅' : '❌'}`
       );
+      return;
+    }
+
+    // Handle cleanup command - delete test repositories
+    if (text === '/cleanup') {
+      await telegramBot.sendMessage(chatId, 
+        `🧹 **Starting cleanup of test repositories...**\n\n` +
+        `This will delete all repositories ending with number patterns.\n` +
+        `Please wait while I clean up...`
+      );
+
+      try {
+        const deletedRepos = await cleanupTestRepositories();
+        
+        if (deletedRepos.length > 0) {
+          await telegramBot.sendMessage(chatId,
+            `✅ **Cleanup Complete!**\n\n` +
+            `🗑️ **Deleted ${deletedRepos.length} repositories:**\n\n` +
+            deletedRepos.map(repo => `• ${repo}`).join('\n') + '\n\n' +
+            `All test repositories have been removed! 🎉`
+          );
+        } else {
+          await telegramBot.sendMessage(chatId,
+            `✅ **Cleanup Complete!**\n\n` +
+            `No test repositories found to delete.\n` +
+            `All repositories are clean! 🎉`
+          );
+        }
+      } catch (error) {
+        console.error('Cleanup error:', error);
+        await telegramBot.sendMessage(chatId,
+          `❌ **Cleanup Failed**\n\n` +
+          `Error: ${error.message}\n\n` +
+          `Please check the logs for more details.`
+        );
+      }
       return;
     }
 
@@ -2006,7 +2043,8 @@ if (telegramBot) {
         `**Commands:**\n` +
         `/start - Welcome message\n` +
         `/help - This help message\n` +
-        `/status - Check my status\n\n` +
+        `/status - Check my status\n` +
+        `/cleanup - Delete test repositories\n\n` +
         `**Web App:**\n` +
         `• Click "🚀 Open App Creator" for web interface`
       );
@@ -2020,6 +2058,76 @@ if (telegramBot) {
       }
     }
   });
+}
+
+// Function to cleanup test repositories
+async function cleanupTestRepositories() {
+  const deletedRepos = [];
+  
+  try {
+    // Get all repositories for the user
+    const response = await fetch(`https://api.github.com/user/repos?per_page=100`, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Telegram-Bot-Cleanup'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const repos = await response.json();
+    
+    // Filter repositories that match the test pattern (ending with numbers)
+    const testRepos = repos.filter(repo => {
+      const repoName = repo.name;
+      // Match pattern: ends with -5153324774- followed by numbers
+      return /-5153324774-\d+$/.test(repoName);
+    });
+
+    console.log(`Found ${testRepos.length} test repositories to delete`);
+
+    // Delete each test repository
+    for (const repo of testRepos) {
+      try {
+        const deleteResponse = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${repo.name}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Telegram-Bot-Cleanup'
+          }
+        });
+
+        if (deleteResponse.ok) {
+          deletedRepos.push(repo.name);
+          console.log(`✅ Deleted repository: ${repo.name}`);
+          
+          // Remove from createdApps if it exists
+          const appSlug = repo.name;
+          if (createdApps.has(appSlug)) {
+            createdApps.delete(appSlug);
+          }
+        } else {
+          console.error(`❌ Failed to delete ${repo.name}: ${deleteResponse.status}`);
+        }
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (error) {
+        console.error(`Error deleting ${repo.name}:`, error.message);
+      }
+    }
+
+    return deletedRepos;
+    
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    throw error;
+  }
 }
 
 // Helper function to extract app name from message
