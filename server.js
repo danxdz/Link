@@ -2228,6 +2228,88 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+// Cleanup endpoint to delete test repositories
+app.post('/api/cleanup', async (req, res) => {
+  try {
+    const reposToDelete = [
+      'todo-lista-5153324774-1757507609929',
+      'calculateur-cnc-5153324774-1757420213594',
+      'danxdz/calculateur-cnc-5153324774-1757420213594',
+      'chat-5153324774-1757418652027',
+      'danxdz/chat-5153324774-1757418652027',
+      'blog-5153324774-1757376213509',
+      'danxdz/blog-5153324774-1757376213509',
+      'weather-dashboard-5153324774-1757421108186',
+      'danxdz/weather-dashboard-5153324774-1757421108186',
+      'blog-5153324774-1757423166207',
+      'danxdz/blog-5153324774-1757423166207',
+      'weather-dashboard-5153324774-1757425603124',
+      'danxdz/weather-dashboard-5153324774-1757425603124',
+      'todo-list-5153324774-1757432073507',
+      'danxdz/todo-list-5153324774-1757432073507',
+      'todo-list-5153324774-1757428764588',
+      'danxdz/todo-list-5153324774-1757428764588',
+      'blog-5153324774-1757416943167',
+      'danxdz/blog-5153324774-1757416943167'
+    ];
+
+    const results = {
+      deleted: [],
+      notFound: [],
+      failed: []
+    };
+
+    for (const repoName of reposToDelete) {
+      try {
+        const fullRepoName = repoName.includes('/') ? repoName : GITHUB_USERNAME + '/' + repoName;
+        
+        const response = await fetch('https://api.github.com/repos/' + fullRepoName, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': 'token ' + GITHUB_TOKEN,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Repository-Cleanup-Script'
+          }
+        });
+
+        if (response.ok) {
+          results.deleted.push(fullRepoName);
+          console.log('✅ Deleted repository: ' + fullRepoName);
+        } else if (response.status === 404) {
+          results.notFound.push(fullRepoName);
+          console.log('⚠️ Repository not found: ' + fullRepoName);
+        } else {
+          const errorText = await response.text();
+          results.failed.push({ repo: fullRepoName, error: response.status + ': ' + errorText });
+          console.log('❌ Failed to delete ' + fullRepoName + ': ' + response.status);
+        }
+      } catch (error) {
+        results.failed.push({ repo: repoName, error: error.message });
+        console.error('❌ Error deleting ' + repoName + ':', error.message);
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    res.json({
+      success: true,
+      summary: {
+        deleted: results.deleted.length,
+        notFound: results.notFound.length,
+        failed: results.failed.length
+      },
+      deleted: results.deleted,
+      notFound: results.notFound,
+      failed: results.failed
+    });
+
+  } catch (error) {
+    console.error('Cleanup API error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/send-message', async (req, res) => {
   try {
     const { message, conversationId } = req.body;
