@@ -1839,8 +1839,7 @@ if (telegramBot) {
         `**Commands:**\n` +
         `/start - Welcome message\n` +
         `/help - This help message\n` +
-        `/status - Check my status\n` +
-        `/cleanup - Delete test repositories`
+        `/status - Check my status`
       );
       return;
     }
@@ -1867,41 +1866,6 @@ if (telegramBot) {
       return;
     }
 
-    // Handle cleanup command - delete test repositories
-    if (text === '/cleanup') {
-      await telegramBot.sendMessage(chatId, 
-        `🧹 **Starting cleanup of test repositories...**\n\n` +
-        `This will delete all repositories ending with number patterns.\n` +
-        `Please wait while I clean up...`
-      );
-
-      try {
-        const deletedRepos = await cleanupTestRepositories();
-        
-        if (deletedRepos.length > 0) {
-          await telegramBot.sendMessage(chatId,
-            `✅ **Cleanup Complete!**\n\n` +
-            `🗑️ **Deleted ${deletedRepos.length} repositories:**\n\n` +
-            deletedRepos.map(repo => `• ${repo}`).join('\n') + '\n\n' +
-            `All test repositories have been removed! 🎉`
-          );
-        } else {
-          await telegramBot.sendMessage(chatId,
-            `✅ **Cleanup Complete!**\n\n` +
-            `No test repositories found to delete.\n` +
-            `All repositories are clean! 🎉`
-          );
-        }
-      } catch (error) {
-        console.error('Cleanup error:', error);
-        await telegramBot.sendMessage(chatId,
-          `❌ **Cleanup Failed**\n\n` +
-          `Error: ${error.message}\n\n` +
-          `Please check the logs for more details.`
-        );
-      }
-      return;
-    }
 
     // Handle shutdown command (development only)
     if (text === '/shutdown' && process.env.NODE_ENV !== 'production') {
@@ -2043,8 +2007,7 @@ if (telegramBot) {
         `**Commands:**\n` +
         `/start - Welcome message\n` +
         `/help - This help message\n` +
-        `/status - Check my status\n` +
-        `/cleanup - Delete test repositories\n\n` +
+        `/status - Check my status\n\n` +
         `**Web App:**\n` +
         `• Click "🚀 Open App Creator" for web interface`
       );
@@ -2060,75 +2023,6 @@ if (telegramBot) {
   });
 }
 
-// Function to cleanup test repositories
-async function cleanupTestRepositories() {
-  const deletedRepos = [];
-  
-  try {
-    // Get all repositories for the user
-    const response = await fetch(`https://api.github.com/user/repos?per_page=100`, {
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'Telegram-Bot-Cleanup'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status}`);
-    }
-
-    const repos = await response.json();
-    
-    // Filter repositories that match the test pattern (ending with numbers)
-    const testRepos = repos.filter(repo => {
-      const repoName = repo.name;
-      // Match pattern: ends with -5153324774- followed by numbers
-      return /-5153324774-\d+$/.test(repoName);
-    });
-
-    console.log(`Found ${testRepos.length} test repositories to delete`);
-
-    // Delete each test repository
-    for (const repo of testRepos) {
-      try {
-        const deleteResponse = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${repo.name}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'Telegram-Bot-Cleanup'
-          }
-        });
-
-        if (deleteResponse.ok) {
-          deletedRepos.push(repo.name);
-          console.log(`✅ Deleted repository: ${repo.name}`);
-          
-          // Remove from createdApps if it exists
-          const appSlug = repo.name;
-          if (createdApps.has(appSlug)) {
-            createdApps.delete(appSlug);
-          }
-        } else {
-          console.error(`❌ Failed to delete ${repo.name}: ${deleteResponse.status}`);
-        }
-        
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-      } catch (error) {
-        console.error(`Error deleting ${repo.name}:`, error.message);
-      }
-    }
-
-    return deletedRepos;
-    
-  } catch (error) {
-    console.error('Cleanup error:', error);
-    throw error;
-  }
-}
 
 // Helper function to extract app name from message
 function extractAppName(message) {
@@ -2228,87 +2122,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// Cleanup endpoint to delete test repositories
-app.post('/api/cleanup', async (req, res) => {
-  try {
-    const reposToDelete = [
-      'todo-lista-5153324774-1757507609929',
-      'calculateur-cnc-5153324774-1757420213594',
-      'danxdz/calculateur-cnc-5153324774-1757420213594',
-      'chat-5153324774-1757418652027',
-      'danxdz/chat-5153324774-1757418652027',
-      'blog-5153324774-1757376213509',
-      'danxdz/blog-5153324774-1757376213509',
-      'weather-dashboard-5153324774-1757421108186',
-      'danxdz/weather-dashboard-5153324774-1757421108186',
-      'blog-5153324774-1757423166207',
-      'danxdz/blog-5153324774-1757423166207',
-      'weather-dashboard-5153324774-1757425603124',
-      'danxdz/weather-dashboard-5153324774-1757425603124',
-      'todo-list-5153324774-1757432073507',
-      'danxdz/todo-list-5153324774-1757432073507',
-      'todo-list-5153324774-1757428764588',
-      'danxdz/todo-list-5153324774-1757428764588',
-      'blog-5153324774-1757416943167',
-      'danxdz/blog-5153324774-1757416943167'
-    ];
-
-    const results = {
-      deleted: [],
-      notFound: [],
-      failed: []
-    };
-
-    for (const repoName of reposToDelete) {
-      try {
-        const fullRepoName = repoName.includes('/') ? repoName : GITHUB_USERNAME + '/' + repoName;
-        
-        const response = await fetch('https://api.github.com/repos/' + fullRepoName, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': 'token ' + GITHUB_TOKEN,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'Repository-Cleanup-Script'
-          }
-        });
-
-        if (response.ok) {
-          results.deleted.push(fullRepoName);
-          console.log('✅ Deleted repository: ' + fullRepoName);
-        } else if (response.status === 404) {
-          results.notFound.push(fullRepoName);
-          console.log('⚠️ Repository not found: ' + fullRepoName);
-        } else {
-          const errorText = await response.text();
-          results.failed.push({ repo: fullRepoName, error: response.status + ': ' + errorText });
-          console.log('❌ Failed to delete ' + fullRepoName + ': ' + response.status);
-        }
-      } catch (error) {
-        results.failed.push({ repo: repoName, error: error.message });
-        console.error('❌ Error deleting ' + repoName + ':', error.message);
-      }
-
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    res.json({
-      success: true,
-      summary: {
-        deleted: results.deleted.length,
-        notFound: results.notFound.length,
-        failed: results.failed.length
-      },
-      deleted: results.deleted,
-      notFound: results.notFound,
-      failed: results.failed
-    });
-
-  } catch (error) {
-    console.error('Cleanup API error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 app.post('/api/send-message', async (req, res) => {
   try {
@@ -2362,79 +2175,6 @@ process.on('SIGTERM', () => {
   });
 });
 
-// One-time cleanup function
-async function runOneTimeCleanup() {
-  if (process.env.RUN_CLEANUP === 'true' || process.env.NODE_ENV === 'production') {
-    console.log('🧹 Running one-time repository cleanup...');
-    
-    const reposToDelete = [
-      'todo-lista-5153324774-1757507609929',
-      'calculateur-cnc-5153324774-1757420213594',
-      'danxdz/calculateur-cnc-5153324774-1757420213594',
-      'chat-5153324774-1757418652027',
-      'danxdz/chat-5153324774-1757418652027',
-      'blog-5153324774-1757376213509',
-      'danxdz/blog-5153324774-1757376213509',
-      'weather-dashboard-5153324774-1757421108186',
-      'danxdz/weather-dashboard-5153324774-1757421108186',
-      'blog-5153324774-1757423166207',
-      'danxdz/blog-5153324774-1757423166207',
-      'weather-dashboard-5153324774-1757425603124',
-      'danxdz/weather-dashboard-5153324774-1757425603124',
-      'todo-list-5153324774-1757432073507',
-      'danxdz/todo-list-5153324774-1757432073507',
-      'todo-list-5153324774-1757428764588',
-      'danxdz/todo-list-5153324774-1757428764588',
-      'blog-5153324774-1757416943167',
-      'danxdz/blog-5153324774-1757416943167'
-    ];
-
-    let deleted = 0;
-    let notFound = 0;
-    let failed = 0;
-
-    for (const repoName of reposToDelete) {
-      try {
-        const fullRepoName = repoName.includes('/') ? repoName : GITHUB_USERNAME + '/' + repoName;
-        
-        console.log('🗑️ Deleting repository: ' + fullRepoName);
-        
-        const response = await fetch('https://api.github.com/repos/' + fullRepoName, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': 'token ' + GITHUB_TOKEN,
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'Repository-Cleanup-Script'
-          }
-        });
-
-        if (response.ok) {
-          console.log('✅ Successfully deleted: ' + fullRepoName);
-          deleted++;
-        } else if (response.status === 404) {
-          console.log('⚠️ Repository not found: ' + fullRepoName);
-          notFound++;
-        } else {
-          const errorText = await response.text();
-          console.log('❌ Failed to delete ' + fullRepoName + ': ' + response.status + ' - ' + errorText);
-          failed++;
-        }
-      } catch (error) {
-        console.error('❌ Error deleting ' + repoName + ':', error.message);
-        failed++;
-      }
-
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    console.log('📊 Cleanup Summary:');
-    console.log('✅ Successfully deleted: ' + deleted);
-    console.log('⚠️ Not found: ' + notFound);
-    console.log('❌ Failed: ' + failed);
-    console.log('🎉 Cleanup completed!');
-  }
-}
 
 // Start server
 server.listen(PORT, '0.0.0.0', () => {
@@ -2442,7 +2182,4 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`📱 Telegram Bot: ${telegramBot ? 'Active' : 'Not configured'}`);
   console.log(`🤖 Cursor API: ${CURSOR_API_KEY ? 'Configured' : 'Mock mode'}`);
   console.log(`🌐 WebSocket: http://0.0.0.0:${PORT}`);
-  
-  // Run cleanup if requested
-  runOneTimeCleanup();
 });
