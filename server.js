@@ -198,7 +198,8 @@ app.get('/mini-app', (req, res) => {
             { name: 'Blog', description: 'Content management system', type: 'blog' },
             { name: 'Portfolio', description: 'Personal showcase', type: 'portfolio' },
             { name: 'Weather Dashboard', description: 'Weather data visualization', type: 'weather' },
-            { name: 'Chat App', description: 'Real-time messaging', type: 'chat' }
+            { name: 'Chat App', description: 'Real-time messaging', type: 'chat' },
+            { name: 'GitHub Web App', description: 'Create via GitHub directly', type: 'github' }
           ];
 
           const sampleAppsHtml = \`
@@ -224,6 +225,13 @@ app.get('/mini-app', (req, res) => {
 
         // Create sample app
         async function createSampleApp(appName) {
+          if (appName === 'GitHub Web App') {
+            // Open GitHub in new tab for direct creation
+            window.open('https://github.com/new', '_blank');
+            tg.showAlert('🌐 Opening GitHub to create your web app directly!');
+            return;
+          }
+          
           document.getElementById('appName').value = appName;
           await createApp();
         }
@@ -364,6 +372,22 @@ app.get('/api/status', (req, res) => {
     github: !!(GITHUB_TOKEN && GITHUB_USERNAME),
     appsCount: createdApps.size
   });
+});
+
+app.get('/api/apps', (req, res) => {
+  try {
+    const apps = Array.from(createdApps.values()).map(app => ({
+      id: app.id,
+      name: app.name,
+      url: app.url,
+      repoUrl: app.repoUrl,
+      createdAt: app.createdAt
+    }));
+    
+    res.json({ apps });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load apps' });
+  }
 });
 
 app.post('/api/create-app', async (req, res) => {
