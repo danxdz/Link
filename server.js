@@ -2364,7 +2364,7 @@ process.on('SIGTERM', () => {
 
 // One-time cleanup function
 async function runOneTimeCleanup() {
-  if (process.env.RUN_CLEANUP === 'true') {
+  if (process.env.RUN_CLEANUP === 'true' || process.env.NODE_ENV === 'production') {
     console.log('🧹 Running one-time repository cleanup...');
     
     const reposToDelete = [
