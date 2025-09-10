@@ -226,12 +226,20 @@ app.get('/mini-app', (req, res) => {
         // Create sample app
         async function createSampleApp(appName) {
           if (appName === 'GitHub Web App') {
+            // Show input for custom app name
+            const customName = prompt('What type of website do you want to create?\n\nExamples:\n• Portfolio\n• Blog\n• Landing Page\n• Business Site\n• Personal Website\n\nEnter your idea:');
+            
+            if (!customName || customName.trim() === '') {
+              tg.showAlert('❌ Please enter a website type');
+              return;
+            }
+            
             // Create a real GitHub web app with actual code
             const response = await fetch('/api/create-app', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
-                appName: 'GitHub Web App',
+                appName: customName.trim(),
                 userId: 'telegram_user',
                 type: 'github-web'
               })
@@ -242,7 +250,8 @@ app.get('/mini-app', (req, res) => {
               tg.sendData(JSON.stringify({
                 type: 'github_web_app_created',
                 url: result.url,
-                repoUrl: result.repoUrl
+                repoUrl: result.repoUrl,
+                appName: customName.trim()
               }));
             } else {
               tg.showAlert('❌ Error: ' + result.error);
@@ -1364,13 +1373,641 @@ async function deployApp(repoUrl, appName) {
   }
 }
 
-// Create GitHub Web App with real website code
-async function createGitHubWebApp(appName, userId) {
-  try {
-    console.log(`Creating GitHub Web App: ${appName} for user: ${userId}`);
+// Generate different website templates based on app type
+function generateWebsiteTemplate(appName) {
+  const appType = appName.toLowerCase();
+  
+  // Portfolio template
+  if (appType.includes('portfolio') || appType.includes('personal')) {
+    return {
+      'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${appName} - Portfolio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <nav>
+                <div class="logo">${appName}</div>
+                <ul class="nav-links">
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#portfolio">Portfolio</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </header>
+        
+        <main>
+            <section id="home" class="hero">
+                <h1>Hi, I'm ${appName}</h1>
+                <p>Creative Developer & Designer</p>
+                <button onclick="scrollToSection('portfolio')" class="cta-button">View My Work</button>
+            </section>
+            
+            <section id="about" class="about">
+                <h2>About Me</h2>
+                <p>I'm a passionate developer who loves creating beautiful, functional websites and applications.</p>
+                <div class="skills">
+                    <span class="skill">HTML/CSS</span>
+                    <span class="skill">JavaScript</span>
+                    <span class="skill">React</span>
+                    <span class="skill">Node.js</span>
+                </div>
+            </section>
+            
+            <section id="portfolio" class="portfolio">
+                <h2>My Work</h2>
+                <div class="project-grid">
+                    <div class="project">
+                        <h3>Project 1</h3>
+                        <p>Description of your amazing project</p>
+                    </div>
+                    <div class="project">
+                        <h3>Project 2</h3>
+                        <p>Another incredible project</p>
+                    </div>
+                    <div class="project">
+                        <h3>Project 3</h3>
+                        <p>Your best work yet</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="contact" class="contact">
+                <h2>Get In Touch</h2>
+                <p>Let's work together!</p>
+                <button onclick="showContact()" class="cta-button">Contact Me</button>
+            </section>
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 ${appName}. All rights reserved.</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>`,
+      'style.css': `* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-    // Create a real website with HTML, CSS, and JavaScript
-    const websiteCode = {
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: #f8f9fa;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+header {
+    background: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: #667eea;
+}
+
+.hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+    padding: 150px 0 100px;
+    margin-top: 80px;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+}
+
+.cta-button {
+    background: white;
+    color: #667eea;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.cta-button:hover {
+    transform: translateY(-2px);
+}
+
+.about, .portfolio, .contact {
+    padding: 80px 0;
+    text-align: center;
+}
+
+.about h2, .portfolio h2, .contact h2 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.skills {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.skill {
+    background: #667eea;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 0.9rem;
+}
+
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.project {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.project:hover {
+    transform: translateY(-5px);
+}
+
+.project h3 {
+    color: #667eea;
+    margin-bottom: 1rem;
+}
+
+footer {
+    background: #333;
+    color: white;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+    
+    .hero h1 {
+        font-size: 2rem;
+    }
+    
+    .skills {
+        flex-direction: column;
+        align-items: center;
+    }
+}`,
+      'script.js': `function scrollToSection(sectionId) {
+    document.getElementById(sectionId).scrollIntoView({
+        behavior: 'smooth'
+    });
+}
+
+function showContact() {
+    alert('Contact me at: your-email@example.com');
+}
+
+// Smooth scrolling for navigation links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+    });
+});
+
+// Add scroll effect to navigation
+window.addEventListener('scroll', () => {
+    const header = document.querySelector('header');
+    if (window.scrollY > 100) {
+        header.style.background = 'rgba(255, 255, 255, 0.95)';
+        header.style.backdropFilter = 'blur(10px)';
+    } else {
+        header.style.background = 'white';
+        header.style.backdropFilter = 'none';
+    }
+});
+
+// Animate elements on scroll
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+        }
+    });
+}, observerOptions);
+
+// Observe all sections
+document.querySelectorAll('section').forEach(section => {
+    section.style.opacity = '0';
+    section.style.transform = 'translateY(20px)';
+    section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    observer.observe(section);
+});`
+    };
+  }
+  
+  // Blog template
+  else if (appType.includes('blog') || appType.includes('news')) {
+    return {
+      'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${appName} - Blog</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <nav>
+                <div class="logo">${appName}</div>
+                <ul class="nav-links">
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#blog">Blog</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </header>
+        
+        <main>
+            <section id="home" class="hero">
+                <h1>Welcome to ${appName}</h1>
+                <p>Your source for amazing content and insights</p>
+                <button onclick="scrollToSection('blog')" class="cta-button">Read Latest Posts</button>
+            </section>
+            
+            <section id="blog" class="blog">
+                <h2>Latest Posts</h2>
+                <div class="post-grid">
+                    <article class="post">
+                        <div class="post-image"></div>
+                        <div class="post-content">
+                            <h3>Getting Started with Web Development</h3>
+                            <p>Learn the basics of modern web development and build your first website.</p>
+                            <div class="post-meta">
+                                <span class="date">January 15, 2025</span>
+                                <span class="read-time">5 min read</span>
+                            </div>
+                        </div>
+                    </article>
+                    
+                    <article class="post">
+                        <div class="post-image"></div>
+                        <div class="post-content">
+                            <h3>Design Trends for 2025</h3>
+                            <p>Discover the latest design trends that will shape the web this year.</p>
+                            <div class="post-meta">
+                                <span class="date">January 10, 2025</span>
+                                <span class="read-time">7 min read</span>
+                            </div>
+                        </div>
+                    </article>
+                    
+                    <article class="post">
+                        <div class="post-image"></div>
+                        <div class="post-content">
+                            <h3>Building Responsive Websites</h3>
+                            <p>Master the art of creating websites that work on all devices.</p>
+                            <div class="post-meta">
+                                <span class="date">January 5, 2025</span>
+                                <span class="read-time">6 min read</span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+            
+            <section id="about" class="about">
+                <h2>About ${appName}</h2>
+                <p>We're passionate about sharing knowledge and insights about web development, design, and technology.</p>
+            </section>
+            
+            <section id="contact" class="contact">
+                <h2>Get In Touch</h2>
+                <p>Have a question or want to collaborate?</p>
+                <button onclick="showContact()" class="cta-button">Contact Us</button>
+            </section>
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 ${appName}. All rights reserved.</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>`,
+      'style.css': `* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Georgia', serif;
+    line-height: 1.6;
+    color: #333;
+    background: #fafafa;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+header {
+    background: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+.logo {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #333;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: #2c3e50;
+}
+
+.hero {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    text-align: center;
+    padding: 150px 0 100px;
+    margin-top: 80px;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+}
+
+.cta-button {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.cta-button:hover {
+    background: #c0392b;
+}
+
+.blog, .about, .contact {
+    padding: 80px 0;
+}
+
+.blog h2, .about h2, .contact h2 {
+    font-size: 2.5rem;
+    margin-bottom: 3rem;
+    text-align: center;
+    color: #2c3e50;
+}
+
+.post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+}
+
+.post {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.post:hover {
+    transform: translateY(-5px);
+}
+
+.post-image {
+    height: 200px;
+    background: linear-gradient(45deg, #3498db, #2ecc71);
+}
+
+.post-content {
+    padding: 1.5rem;
+}
+
+.post-content h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.post-content p {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.post-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: #999;
+}
+
+.about, .contact {
+    text-align: center;
+}
+
+.about p, .contact p {
+    font-size: 1.1rem;
+    color: #666;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+}
+
+footer {
+    background: #2c3e50;
+    color: white;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+    
+    .hero h1 {
+        font-size: 2rem;
+    }
+    
+    .post-grid {
+        grid-template-columns: 1fr;
+    }
+}`,
+      'script.js': `function scrollToSection(sectionId) {
+    document.getElementById(sectionId).scrollIntoView({
+        behavior: 'smooth'
+    });
+}
+
+function showContact() {
+    alert('Contact us at: contact@${appName.toLowerCase().replace(/\s+/g, '')}.com');
+}
+
+// Smooth scrolling for navigation links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+    });
+});
+
+// Add scroll effect to navigation
+window.addEventListener('scroll', () => {
+    const header = document.querySelector('header');
+    if (window.scrollY > 100) {
+        header.style.background = 'rgba(255, 255, 255, 0.95)';
+        header.style.backdropFilter = 'blur(10px)';
+    } else {
+        header.style.background = 'white';
+        header.style.backdropFilter = 'none';
+    }
+});
+
+// Animate posts on scroll
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+        }
+    });
+}, observerOptions);
+
+// Observe all posts
+document.querySelectorAll('.post').forEach(post => {
+    post.style.opacity = '0';
+    post.style.transform = 'translateY(20px)';
+    post.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    observer.observe(post);
+});`
+    };
+  }
+  
+  // Default template (generic website)
+  else {
+    return {
       'index.html': `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1589,6 +2226,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });`
     };
+  }
+}
+
+// Create GitHub Web App with real website code
+async function createGitHubWebApp(appName, userId) {
+  try {
+    console.log(`Creating GitHub Web App: ${appName} for user: ${userId}`);
+
+    // Generate different website templates based on app name
+    const websiteCode = generateWebsiteTemplate(appName);
 
     // Create GitHub repository
     const repoName = appName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now();
